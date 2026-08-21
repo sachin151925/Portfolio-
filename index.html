@@ -203,6 +203,11 @@
       color: var(--glow);
     }
 
+    .nav-links a.active {
+      color: var(--text);
+      text-shadow: 0 0 14px rgba(181, 139, 255, 0.7);
+    }
+
     @media(max-width:640px) {
       .nav-links {
         display: none;
@@ -218,6 +223,7 @@
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 24px 60px -28px rgba(77, 59, 214, 0.45);
       position: relative;
       overflow: hidden;
+      transition: transform .35s cubic-bezier(.2,.8,.2,1), border-color .35s ease, box-shadow .35s ease;
     }
 
     .glass::before {
@@ -371,6 +377,8 @@
       width: min(240px, 60vw);
       margin: 0 auto;
       position: relative;
+      transform: translateY(var(--parallax-y, 0px));
+      transition: transform .18s linear;
     }
 
     .hero-photo {
@@ -695,10 +703,51 @@
       transform: translateY(0);
     }
 
+    .skill-card,
+    .proj-card,
+    .micro-card,
+    .ach-item,
+    .edu-panel,
+    .reveal.in.edu-panel {
+      transform: perspective(900px) rotateX(var(--tilt-y, 0deg)) rotateY(var(--tilt-x, 0deg));
+      will-change: transform;
+    }
+
+    .skill-card:hover,
+    .proj-card:hover,
+    .micro-card:hover,
+    .ach-item:hover,
+    .edu-panel:hover {
+      border-color: rgba(181, 139, 255, 0.48);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 25px 55px -25px rgba(155, 107, 255, 0.8);
+    }
+
+    .skill-card:hover h4,
+    .proj-card:hover h4,
+    .micro-card:hover span,
+    .ach-item:hover .amt {
+      color: var(--text);
+    }
+
+    @media(max-width:860px) {
+      .hero-photo-wrap {
+        transition: none;
+      }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       * {
         animation-duration: 0.001ms !important;
         transition-duration: 0.001ms !important;
+      }
+
+      .hero-photo-wrap,
+      .skill-card,
+      .proj-card,
+      .micro-card,
+      .ach-item,
+      .edu-panel {
+        transform: none !important;
       }
     }
   </style>
@@ -922,7 +971,7 @@
       <div class="sec-head reveal">
         <h2>Education</h2><span class="tag">07</span>
       </div>
-      <div class="glass reveal" style="padding:6px 24px;">
+      <div class="glass reveal edu-panel" style="padding:6px 24px;">
         <div class="edu-item">
           <div>
             <h3>B.E. Electrical &amp; Electronics Engineering</h3>
@@ -1005,8 +1054,48 @@
     }, { threshold: 0.15 });
     els.forEach(el => io.observe(el));
 
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const finePointer = window.matchMedia('(pointer:fine)').matches;
+
+    const navLinks = [...document.querySelectorAll('.nav-links a')];
+    const sections = navLinks.map(link => document.querySelector(link.getAttribute('href'))).filter(Boolean);
+    const sectionIo = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        navLinks.forEach(link => link.classList.toggle('active', link.getAttribute('href') === '#' + entry.target.id));
+      });
+    }, { rootMargin: '-35% 0px -55% 0px' });
+    sections.forEach(section => sectionIo.observe(section));
+
+    if (!reduceMotion) {
+      const parallaxPhoto = document.querySelector('.hero-photo-wrap');
+      const updateParallax = () => {
+        if (window.innerWidth > 860 && parallaxPhoto) {
+          parallaxPhoto.style.setProperty('--parallax-y', Math.min(window.scrollY * 0.12, 72) + 'px');
+        }
+      };
+      window.addEventListener('scroll', updateParallax, { passive: true });
+      updateParallax();
+    }
+
+    if (finePointer && !reduceMotion) {
+      document.querySelectorAll('.skill-card, .proj-card, .micro-card, .ach-item, .edu-panel').forEach(card => {
+        card.addEventListener('pointermove', event => {
+          const bounds = card.getBoundingClientRect();
+          const x = (event.clientX - bounds.left) / bounds.width - 0.5;
+          const y = (event.clientY - bounds.top) / bounds.height - 0.5;
+          card.style.setProperty('--tilt-x', (x * 5).toFixed(2) + 'deg');
+          card.style.setProperty('--tilt-y', (y * -5).toFixed(2) + 'deg');
+        });
+        card.addEventListener('pointerleave', () => {
+          card.style.setProperty('--tilt-x', '0deg');
+          card.style.setProperty('--tilt-y', '0deg');
+        });
+      });
+    }
+
     /* custom cursor */
-    if (window.matchMedia('(pointer:fine)').matches) {
+    if (finePointer) {
       const dot = document.querySelector('.cur-dot');
       const ring = document.querySelector('.cur-ring');
       let mx = 0, my = 0, rx = 0, ry = 0;
